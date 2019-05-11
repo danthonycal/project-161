@@ -136,9 +136,9 @@ function fnc(evt) {
 	mousePosition = getMousePos(canvas, evt);
 }
 function  getMousePos(canvas, evt) {
-  var rect = canvas.getBoundingClientRect(), // abs. size of element
-      scaleX = canvas.width / rect.width,    // relationship bitmap vs. element for X
-      scaleY = canvas.height / rect.height;  // relationship bitmap vs. element for Y
+	var rect = canvas.getBoundingClientRect(), // abs. size of element
+			scaleX = canvas.width / rect.width,    // relationship bitmap vs. element for X
+			scaleY = canvas.height / rect.height;  // relationship bitmap vs. element for Y
 	
 	return {
 		x: (evt.clientX - rect.left) * scaleX,   // scale mouse coordinates after they have
@@ -229,30 +229,30 @@ function main() {
 
 	gl.useProgram(program);
 
-	const aPositionPointer			 = gl.getAttribLocation(program, 'a_position');
-	const aNormalPointer			 = gl.getAttribLocation(program, 'a_normal');
-	const aPointSizePointer			 = gl.getAttribLocation(program, 'a_point_size');
+	const aPositionPointer					 = gl.getAttribLocation(program, 'a_position');
+	const aNormalPointer						 = gl.getAttribLocation(program, 'a_normal');
+	const aPointSizePointer					 = gl.getAttribLocation(program, 'a_point_size');
 
-	const uModelMatrixPointer		 = gl.getUniformLocation(program, 'u_model_matrix');
-	const uViewMatrixPointer		 = gl.getUniformLocation(program, 'u_view_matrix');
+	const uModelMatrixPointer				 = gl.getUniformLocation(program, 'u_model_matrix');
+	const uViewMatrixPointer				 = gl.getUniformLocation(program, 'u_view_matrix');
 	const uProjectionMatrixPointer	 = gl.getUniformLocation(program, 'u_projection_matrix');
-	const uNormalMatrixPointer		 = gl.getUniformLocation(program, 'u_normal_matrix');
+	const uNormalMatrixPointer			 = gl.getUniformLocation(program, 'u_normal_matrix');
 
-	const uLightDirectionPointer	 = gl.getUniformLocation(program, 'u_light_direction');
-	const uEyePositionPointer		 = gl.getUniformLocation(program, 'u_eye_position');
+	const uLightDirectionPointer		 = gl.getUniformLocation(program, 'u_light_direction');
+	const uEyePositionPointer				 = gl.getUniformLocation(program, 'u_eye_position');
 
-	const uLightAmbientPointer		 = gl.getUniformLocation(program, 'u_light_ambient');
-	const uLightDiffusePointer		 = gl.getUniformLocation(program, 'u_light_diffuse');
-	const uLightSpecularPointer		 = gl.getUniformLocation(program, 'u_light_specular');
+	const uLightAmbientPointer			 = gl.getUniformLocation(program, 'u_light_ambient');
+	const uLightDiffusePointer			 = gl.getUniformLocation(program, 'u_light_diffuse');
+	const uLightSpecularPointer			 = gl.getUniformLocation(program, 'u_light_specular');
 
-	const uMaterialAmbientPointer	 = gl.getUniformLocation(program, 'u_material_ambient');
-	const uMaterialDiffusePointer	 = gl.getUniformLocation(program, 'u_material_diffuse');
+	const uMaterialAmbientPointer		 = gl.getUniformLocation(program, 'u_material_ambient');
+	const uMaterialDiffusePointer		 = gl.getUniformLocation(program, 'u_material_diffuse');
 	const uMaterialSpecularPointer	 = gl.getUniformLocation(program, 'u_material_specular');
 	const uMaterialShininessPointer	 = gl.getUniformLocation(program, 'u_shininess');
 
-	const uEnableAmbientPointer		 = gl.getUniformLocation(program, 'u_enable_ambient');
-	const uEnableDiffusePointer		 = gl.getUniformLocation(program, 'u_enable_diffuse');
-	const uEnableSpecularPointer	 = gl.getUniformLocation(program, 'u_enable_specular');
+	const uEnableAmbientPointer			 = gl.getUniformLocation(program, 'u_enable_ambient');
+	const uEnableDiffusePointer			 = gl.getUniformLocation(program, 'u_enable_diffuse');
+	const uEnableSpecularPointer		 = gl.getUniformLocation(program, 'u_enable_specular');
 
 	gl.enable(gl.DEPTH_TEST);
 	
