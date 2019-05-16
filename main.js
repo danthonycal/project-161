@@ -368,7 +368,7 @@ function animate() {
 	handleKeys();
 	// updateMousePosition();
 	
-	uView = mat4.lookAt(uView, [Math.cos(camera[0] *.7), Math.sin(camera[1]*.7), 15,1.0], [0,0,0,1.0], [0,1.0,0,0])
+	uView = mat4.lookAt(uView, [0, 9.5, 15,1.0], [0,0,0,1.0], [0,1.0,0,0])
 	uProj = mat4.perspective(uProj, toRadian(30),canvas.width/canvas.height,1,100);
 
 
