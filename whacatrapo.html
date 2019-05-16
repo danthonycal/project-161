@@ -14,7 +14,7 @@
 			margin: auto;
 			background-color: aliceblue;
 		}
-		canvas {
+		.bg {
 			height: 85%;
 			width: 85%;
 		}
@@ -25,13 +25,29 @@
 			align-content: space-around;
 			margin: auto;
 		}
+
+		.hammer {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+
 	</style>
 </head>
 <body>
 <!-- <div class="container">
 
 </div> -->
-<canvas id="master" onmousemove="fnc(event)" width="1520" height="777"></canvas>
+<canvas class="bg" id="master" onmousemove="fnc(event)" width="1520" height="777"></canvas>
+<canvas class="hammer" id="hammer" width="200px" height="200px"></canvas>
+<script src="https://code.jquery.com/jquery-3.4.1.js"></script>
+<script type="text/javascript">
+	$(document).mousemove(function(e){
+		$('.hammer').css({left: e.pageX, top:e.pageY})
+	})
+</script>
 <script src="./utils/webgl-init.js"></script>
 <script src="./utils/webgl-debug.js"></script>
 <script src="./utils/webgl-utils.js"></script>
@@ -125,5 +141,6 @@
 	}
 </script>
 <script src="main.js"></script>
+<script src="ham.js"></script>
 </body>
 </html>
