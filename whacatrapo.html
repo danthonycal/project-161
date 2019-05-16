@@ -15,18 +15,31 @@
 			background-color: aliceblue;
 		}
 		canvas {
-			height: 100%;
-			width: 100%;
+			height: 85%;
+			width: 85%;
+		}
+		.container {
+			display: flex;
+			flex-flow: row wrap;
+			justify-content: center;
+			align-content: space-around;
+			margin: auto;
 		}
 	</style>
 </head>
 <body>
+<!-- <div class="container">
+
+</div> -->
 <canvas id="master" onmousemove="fnc(event)" width="1520" height="777"></canvas>
 <script src="./utils/webgl-init.js"></script>
 <script src="./utils/webgl-debug.js"></script>
 <script src="./utils/webgl-utils.js"></script>
 <script src="./utils/gl-matrix.js"></script>
 <!-- shaders -->
+<script type="javascript">
+
+</script>
 <script id="vertex-shader" type="notjs">#version 300 es
 	in vec3 a_position;
 	in vec3 a_normal;
@@ -35,26 +48,6 @@
 	uniform mat4 u_view_matrix;
 	uniform mat4 u_projection_matrix;
 	uniform mat4 u_normal_matrix;   
-
-	out vec3 v_position;
-	out vec3 v_normal;
-
-	void main() {
-		gl_PointSize = 9.0;
-		vec4 transformed_position = u_model_matrix * vec4(a_position, 1.0);
-		gl_Position = u_projection_matrix * u_view_matrix * transformed_position;
-
-		vec3 corrected_a_normal = vec3(u_normal_matrix * vec4(a_normal, 1.0));
-		
-		v_position = vec3(transformed_position);
-		v_normal = corrected_a_normal;
-	} 
-</script>
-<script id="fragment-shader" type="notjs">#version 300 es
-	precision mediump float;
-
-	in vec3 v_position;
-	in vec3 v_normal;
 
 	uniform vec3 u_light_direction; 
 	uniform vec3 u_eye_position;
@@ -75,507 +68,62 @@
 	uniform bool u_enable_diffuse;
 	uniform bool u_enable_specular;
 
-	out vec4 outColor;
+	out vec4 v_color;
 
 	void main() {
-		// common vectors
-		vec3 normalized_a_normal = normalize(v_normal);
-		vec3 normalized_u_light_direction = normalize(u_light_direction);
+		gl_PointSize = 9.0;
+		vec4 transformed_position = u_model_matrix * vec4(a_position, 1.0);
+		gl_Position = u_projection_matrix * u_view_matrix * transformed_position;
 
 		// factors of the final color [set to black]
 		vec3 ambient_color = vec3(0,0,0);
 		vec3 diffuse_color = vec3(0,0,0);
 		vec3 specular_color = vec3(0,0,0);
 
+		// common vectors
+		vec3 corrected_a_normal = vec3(u_normal_matrix * vec4(a_normal, 1.0));
+		vec3 normalized_a_normal = normalize(corrected_a_normal);
+		vec3 normalized_u_light_direction = normalize(u_light_direction);
+		
 		if(u_enable_ambient) {
-		ambient_color = u_light_ambient * u_material_ambient;
+			ambient_color = u_light_ambient * u_material_ambient;
 		}
 
 		if(u_enable_diffuse) {
-		float lambert_coefficient = dot(-normalized_u_light_direction, normalized_a_normal);
-		lambert_coefficient = max(lambert_coefficient, 0.0);
+			float lambert_coefficient = dot(-normalized_u_light_direction, normalized_a_normal);
+			lambert_coefficient = max(lambert_coefficient, 0.0);
 
-		diffuse_color = u_light_diffuse * u_material_diffuse * lambert_coefficient;
+			diffuse_color = u_light_diffuse * u_material_diffuse * lambert_coefficient;
 		}
 
 		if(u_enable_specular) {
-		// compute vectors needed for specular color
-		vec3 reflect_direction = reflect(normalized_u_light_direction, normalized_a_normal);
-		vec3 normalized_reflect_direction = normalize(reflect_direction);
-		vec3 eye_direction = u_eye_position - vec3(v_position);
-		vec3 normalized_eye_direction = normalize(eye_direction);
+			// compute vectors needed for specular color
+			vec3 reflect_direction = reflect(normalized_u_light_direction, normalized_a_normal);
+			vec3 normalized_reflect_direction = normalize(reflect_direction);
+			vec3 eye_direction = u_eye_position - vec3(transformed_position);
+			vec3 normalized_eye_direction = normalize(eye_direction);
 
-		float specular_coefficient = dot(-normalized_reflect_direction, normalized_eye_direction);
-		specular_coefficient = max(specular_coefficient, 0.0);
-		specular_coefficient = pow(specular_coefficient, u_shininess);
-		specular_color = u_light_specular * u_material_specular * specular_coefficient;
+			float specular_coefficient = dot(-normalized_reflect_direction, normalized_eye_direction);
+			specular_coefficient = max(specular_coefficient, 0.0);
+			specular_coefficient = pow(specular_coefficient, u_shininess);
+			specular_color = u_light_specular * u_material_specular * specular_coefficient;
 		}
 
-		outColor = vec4(ambient_color + diffuse_color + specular_color, 1.0);
+
+		v_color = vec4(ambient_color+diffuse_color+specular_color,1.0);
+	} 
+</script>
+<script id="fragment-shader" type="notjs">#version 300 es
+	precision mediump float;
+
+	in vec4 v_color;
+
+	out vec4 outColor;
+
+	void main() {
+		outColor =  v_color;
 	}
 </script>
-<script>
-const mat4 = glMatrix.mat4;
-const toRadian = glMatrix.glMatrix.toRadian;
-var angleUp=0;
-var matStack = [];
-var camera = [0,0,0];
-var pressedKeys = {};
-var requestId=0;
-var canvas = document.getElementById("master");
-var mousePosition = {x:canvas.width/2,y:canvas.height/2};
-var gl = initWebGL(canvas, {}, true);
-
-function handleKeyDown(event) {
-	pressedKeys[event.keyCode] = true;
-}
-function handleKeyUp(event) {
-	pressedKeys[event.keyCode] = false;
-}
-function fnc(evt) {
-	mousePosition = getMousePos(canvas, evt);
-}
-function  getMousePos(canvas, evt) {
-	var rect = canvas.getBoundingClientRect(), // abs. size of element
-			scaleX = canvas.width / rect.width,    // relationship bitmap vs. element for X
-			scaleY = canvas.height / rect.height;  // relationship bitmap vs. element for Y
-	
-	return {
-		x: (evt.clientX - rect.left) * scaleX,   // scale mouse coordinates after they have
-		y: (evt.clientY - rect.top) * scaleY     // been adjusted to be relative to element
-	}
-}
-function handleKeys() {
-	if(pressedKeys[87]){
-		if(camera[1] <= 5)  camera[1]+=0.50;
-	}
-	if(pressedKeys[83]){
-		if(camera[1] >= 0)  camera[1]-=0.50;
-	}
-	if(pressedKeys[65]){
-		if(camera[0] >= -8) camera[0]-=0.50;
-	}
-	if(pressedKeys[68]){
-		if(camera[0] <= 8)  camera[0]+=0.50;
-	}
-	cancelAnimationFrame(requestId);
-
-}
-var parts = [
-	headInfo = {
-		id		: 1,
-		dims	: [160,160,160],
-		transl	: [0,.56,0],
-		rot		: [0,0,0],
-		arrs	: null,
-		buffers	: null,
-		uModel	: null,
-		uNormal	: null,
-	},
-	bodyInfo = {
-		id		: 2,
-		dims	: [160,240,80],
-		transl	: [0,0,0],
-		rot		: [0,0,0],
-		arrs	: null,
-		buffers	: null,
-		uModel	: null,
-		uNormal	: null,
-	},
-	armLeftInfo = {
-		id		: 3,
-		dims	: [60,240,60],
-		transl	: [-.30, 0, .1],
-		rot		: [angleUp,0,0],
-		arrs	: null,
-		buffers	: null,
-		uModel	: null,
-		uNormal	: null,
-	},
-	armRightInfo = {
-		id		: 4,
-		dims	: [60,240,60],
-		transl	: [.30, 0, .1],
-		rot		: [angleUp,0,0],
-		arrs	: null,
-		buffers	: null,
-		uModel	: null,
-		uNormal	: null,
-	},
-	buildingMainInfo = {
-		id		: 5,
-		dims	: [2600,1800,1800],
-		transl	: [0, 0, -5],
-		rot		: [0,0,0],
-		arrs	: null,
-		buffers	: null,
-		uModel	: null,
-		uNormal	: null,
-	},
-];
-
-function main() {
-	const vertexShaderSource = document.getElementById('vertex-shader').text;
-	const fragmentShaderSource = document.getElementById('fragment-shader').text;
-	const vertexShader = initShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-	const fragmentShader = initShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-
-	gl.clearColor(0, 0, 0, 1);
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-	var program = initProgram(gl, vertexShader, fragmentShader);
-
-	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-
-	gl.useProgram(program);
-
-	const aPositionPointer					 = gl.getAttribLocation(program, 'a_position');
-	const aNormalPointer						 = gl.getAttribLocation(program, 'a_normal');
-	const aPointSizePointer					 = gl.getAttribLocation(program, 'a_point_size');
-
-	const uModelMatrixPointer				 = gl.getUniformLocation(program, 'u_model_matrix');
-	const uViewMatrixPointer				 = gl.getUniformLocation(program, 'u_view_matrix');
-	const uProjectionMatrixPointer	 = gl.getUniformLocation(program, 'u_projection_matrix');
-	const uNormalMatrixPointer			 = gl.getUniformLocation(program, 'u_normal_matrix');
-
-	const uLightDirectionPointer		 = gl.getUniformLocation(program, 'u_light_direction');
-	const uEyePositionPointer				 = gl.getUniformLocation(program, 'u_eye_position');
-
-	const uLightAmbientPointer			 = gl.getUniformLocation(program, 'u_light_ambient');
-	const uLightDiffusePointer			 = gl.getUniformLocation(program, 'u_light_diffuse');
-	const uLightSpecularPointer			 = gl.getUniformLocation(program, 'u_light_specular');
-
-	const uMaterialAmbientPointer		 = gl.getUniformLocation(program, 'u_material_ambient');
-	const uMaterialDiffusePointer		 = gl.getUniformLocation(program, 'u_material_diffuse');
-	const uMaterialSpecularPointer	 = gl.getUniformLocation(program, 'u_material_specular');
-	const uMaterialShininessPointer	 = gl.getUniformLocation(program, 'u_shininess');
-
-	const uEnableAmbientPointer			 = gl.getUniformLocation(program, 'u_enable_ambient');
-	const uEnableDiffusePointer			 = gl.getUniformLocation(program, 'u_enable_diffuse');
-	const uEnableSpecularPointer		 = gl.getUniformLocation(program, 'u_enable_specular');
-
-	gl.enable(gl.DEPTH_TEST);
-	
-	gl.enableVertexAttribArray(aPositionPointer);
-	gl.enableVertexAttribArray(aNormalPointer);
-	
-
-	parts.forEach(function (part) {
-				
-		gl.enableVertexAttribArray(aPositionPointer);
-		gl.enableVertexAttribArray(aNormalPointer);
-
-		var uView = mat4.create();
-		var uProj = mat4.create();
-		var dire  = [-6,-5,-6];
-		var shadingProps = {
-			"light": {
-				"ambient": [0.6,0.3,0.4],
-				"diffuse": [1.0,1.0,1.0],
-				"specular": [1.0,1.0,1.0],
-				"direction": [-6,-5,-6],
-			},
-			"material" : {
-				"ambient": [0.0,0.5,0.0],
-				"diffuse": [0.2,0.7,0.2],
-				"specular": [0.9,1.0,0.9],
-				"shininess": 3.0, // try 0.5; try 3.0
-			},
-			"flags": {
-				"ambient": true,
-				"diffuse": true,
-				"specular": true,
-			},
-		};
-
-		uView = mat4.lookAt(uView, [Math.cos(camera[0]),Math.sin(camera[1]),0,1.0], [0,0,0,1.0], [0,1.0,0,0])
-		uProj = mat4.perspective(uProj, toRadian(35),canvas.width/canvas.height,1,100);
-		part.uModel = mat4.create();
-		part.uNormal = mat4.create();
-		mat4.translate(part.uModel, part.uModel, [part.transl[0],part.transl[1],part.transl[2]]);
-
-		mat4.invert(part.uNormal,part.uModel);
-		mat4.transpose(part.uNormal,part.uNormal);
-
-		if(part.id<5){
-			part.arrs = setCharGeom(part.dims[0],part.dims[1],part.dims[2]);
-			part.buffers = setBuffers(part.arrs.vertices,part.arrs.normals,part.arrs.indices);
-		} else if(4<part.id<10){
-			part.arrs = setBuildingGeom(part.dims[0],part.dims[1],part.dims[2]);
-			part.buffers = setBuffers(part.arrs.vertices,part.arrs.normals,part.arrs.indices);
-		}
-		
-		drawObject(part, shadingProps);
-		animate();
-		
-		function animate() {
-			handleKeys();
-			console.log(dire);
-			console.log("("+mousePosition.x+","+mousePosition.y+")");
-			if(mousePosition.x > 25 + canvas.width/2 && mousePosition.y > 25 + canvas.height/2){
-				dire  = [-mousePosition.y/2,mousePosition.x/2,50];
-			}
-			if(mousePosition.x > 25 + canvas.width/2 && mousePosition.y < canvas.height/2 - 50){
-				dire  = [-mousePosition.y/2,-mousePosition.x/2,50];
-			}
-				
-			if(mousePosition.x < canvas.width/2 - 25 && mousePosition.y > 25 + canvas.height/2){
-				dire  = [mousePosition.y/2,mousePosition.x/2,50];
-			}
-			if(mousePosition.x < canvas.width/2 - 25 && mousePosition.y < canvas.height/2 - 50){
-				dire  = [mousePosition.y/2,-mousePosition.x/2,50];
-			}
-			
-			if( canvas.width/2 - 25 < mousePosition.x < 25 + canvas.width/2){
-				dire  = [0,mousePosition.x/2,50];
-			}
-			if( canvas.height/2 - 25 < mousePosition.y < 25 + canvas.height/2){
-				dire  = [-mousePosition.y/2,0,50];
-			}
-			if( canvas.height/2 - 25 < mousePosition.y < 25 + canvas.height/2){
-				dire  = [mousePosition.y/2,0,50];
-			}
-			if( canvas.width/2 - 25 < mousePosition.x < 25 + canvas.width/2){
-				dire  = [0,-mousePosition.x/2,50];
-			}
-				
-			uView = mat4.lookAt(uView, [camera[0],camera[1],15,1.0], [0,0,0,1.0], [0,1.0,0,0])
-			uProj = mat4.perspective(uProj, toRadian(30),canvas.width/canvas.height,1,100);
-
-			part.uModel = mat4.create();
-			part.uNormal = mat4.create();
-
-			mat4.translate(part.uModel, part.uModel, [part.transl[0],part.transl[1],part.transl[2]]);
-
-			mat4.invert(part.uNormal,part.uModel);
-			mat4.transpose(part.uNormal,part.uNormal);
-
-			var rotatedX = part.transl[0];
-			var rotatedY = part.transl[1];
-			if(part.id==1){
-				gl.clearColor(0, 0, 0, 1);
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-			}
-
-			pushMat();
-				part.uModel = mat4.create();
-				part.uNormal = mat4.create();
-				
-				mat4.translate(part.uModel, part.uModel, [part.transl[0],part.transl[1],part.transl[2]]);
-				if(part.id==3){
-					mat4.translate(part.uModel, part.uModel, [0,.35,0,0]);
-					glMatrix.mat4.rotateZ(part.uModel,part.uModel, toRadian(180-angleUp));
-					mat4.translate(part.uModel, part.uModel, [part.transl[0]+.3,part.transl[1]+.3,0,0]);
-				}
-				if(part.id==4){
-					mat4.translate(part.uModel, part.uModel, [0,.35,0,0]);
-					glMatrix.mat4.rotateZ(part.uModel,part.uModel, toRadian(angleUp));
-					mat4.translate(part.uModel, part.uModel, [part.transl[0]-.3,part.transl[1]-.3,0,0]);
-				}
-				
-				mat4.invert(part.uNormal,part.uModel);
-				mat4.transpose(part.uNormal,part.uNormal);
-				
-				drawObject(part, shadingProps);
-			popMat();
-
-			angleUp = (angleUp + 6) % 165;
-
-			handleKeys();
-			requestAnimFrame(animate);
-		}
-		function drawObject (shape,shadeProps, primitiveType=gl.TRIANGLES) {
-			gl.enable(gl.DEPTH_TEST);
-			
-			gl.uniformMatrix4fv(uModelMatrixPointer, false,new Float32Array(shape.uModel));
-			gl.uniformMatrix4fv(uViewMatrixPointer, false, new Float32Array(uView));
-			gl.uniformMatrix4fv(uProjectionMatrixPointer, false, new Float32Array(uProj));
-			gl.uniformMatrix4fv(uNormalMatrixPointer, false, new Float32Array(shape.uNormal))
-	
-			// set light parameters
-			gl.uniform3fv(uLightAmbientPointer, shadeProps.light.ambient);
-			gl.uniform3fv(uLightDiffusePointer, shadeProps.light.diffuse);
-			gl.uniform3fv(uLightSpecularPointer, shadeProps.light.specular);
-			gl.uniform3fv(uLightDirectionPointer, dire);
-			gl.uniform3fv(uEyePositionPointer, camera);
-	
-			// set material properties
-			gl.uniform3fv(uMaterialAmbientPointer, shadeProps.material.ambient);
-			gl.uniform3fv(uMaterialDiffusePointer, shadeProps.material.diffuse);
-			gl.uniform3fv(uMaterialSpecularPointer, shadeProps.material.specular);
-			gl.uniform1f(uMaterialShininessPointer, shadeProps.material.shininess);
-	
-			// set flags
-			gl.uniform1i(uEnableAmbientPointer, shadeProps.flags.ambient);
-			gl.uniform1i(uEnableDiffusePointer, shadeProps.flags.diffuse);
-			gl.uniform1i(uEnableSpecularPointer, shadeProps.flags.specular);
-			
-			// bind vertices
-			gl.bindBuffer(gl.ARRAY_BUFFER, shape.buffers.vertexBuffer);
-			gl.vertexAttribPointer(aPositionPointer, 3, gl.FLOAT, false, 0, 0);
-			gl.vertexAttribPointer(aNormalPointer, 3, gl.FLOAT, false, 0, 0);
-			// bind indices
-			gl.enableVertexAttribArray(aPositionPointer);
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, shape.buffers.indexBuffer);
-			// draw triangles based on indices array
-			gl.drawElements(primitiveType, shape.buffers.indexBuffer.numItems, gl.UNSIGNED_BYTE, 0)
-		}
-		function pushMat() {
-			var copy = mat4.create();
-			mat4.set(part.uModel, copy);
-			matStack.push(copy);
-		}
-		function popMat() {
-			if(matStack.length==0){
-				throw "invalid pop!"
-			}
-			part.uModel = matStack.pop();
-		}
-		function setBuildingGeom(w, h, d) {
-			let arrs = {};
-			arrs.vertices = [];
-			arrs.normals  = [];
-			arrs.indices  = [];
-			var x = w/(canvas.width-canvas.height);
-			var y = h/(canvas.width-canvas.height);
-			var z = d/(canvas.width-canvas.height);
-			var mbX = 0.7*x;
-			var mbY = 0.7*y;
-			var mbZ = 0.5*z;
-			let mainBuilding = [
-				/* front */
-				-x, -y,  z,
-				 x, -y,  z,
-				 x,  y,  z,
-				-x,  y,  z,
-	
-				/* Back face */
-				-x, -y, -z,
-				-x,  y, -z,
-				 x,  y, -z,
-				 x, -y, -z,
-	
-				/* Top face */
-				-x,  y, -z,
-				-x,  y,  z,
-				 x,  y,  z,
-				 x,  y, -z,
-	
-				/* Bottom face */
-				-x, -y, -z,
-				 x, -y, -z,
-				 x, -y,  z,
-				-x, -y,  z,
-	
-				/* Right face */
-				 x, -y, -z,
-				 x,  y, -z,
-				 x,  y,  z,
-				 x, -y,  z,
-	
-				/* Left face */
-				-x, -y, -z,
-				-x, -y,  z,
-				-x,  y,  z,
-				-x,  y, -z,
-			];
-			for(var i=0; i<mainBuilding.length; i++) arrs.vertices.push(mainBuilding[i]);
-			arrs.normals = arrs.vertices;
-			for(let i=0; i<arrs.vertices.length/3; i+=4){
-				arrs.indices.push(i);
-				arrs.indices.push(i+1);
-				arrs.indices.push(i+2);
-				arrs.indices.push(i);
-				arrs.indices.push(i+2);
-				arrs.indices.push(i+3);
-			}
-			return arrs;
-		}
-		function setCharGeom(w,h,d) {
-			let arrs = {};
-			arrs.vertices = [];
-			arrs.normals  = [];
-			arrs.indices  = [];
-			var x = w/(canvas.width-canvas.height);
-			var y = h/(canvas.width-canvas.height);
-			var z = d/(canvas.width-canvas.height);
-			arrs.vertices = [
-				/* front */
-				-x, -y,  z,
-				 x, -y,  z,
-				 x,  y,  z,
-				-x,  y,  z,
-	
-				/* Back face */
-				-x, -y, -z,
-				-x,  y, -z,
-				 x,  y, -z,
-				 x, -y, -z,
-	
-				/* Top face */
-				-x,  y, -z,
-				-x,  y,  z,
-				 x,  y,  z,
-				 x,  y, -z,
-	
-				/* Bottom face */
-				-x, -y, -z,
-				 x, -y, -z,
-				 x, -y,  z,
-				-x, -y,  z,
-	
-				/* Right face */
-				 x, -y, -z,
-				 x,  y, -z,
-				 x,  y,  z,
-				 x, -y,  z,
-	
-				/* Left face */
-				-x, -y, -z,
-				-x, -y,  z,
-				-x,  y,  z,
-				-x,  y, -z,
-			];
-			arrs.normals = arrs.vertices;
-			for(let i=0; i<arrs.vertices.length/3; i+=4){
-				arrs.indices.push(i);
-				arrs.indices.push(i+1);
-				arrs.indices.push(i+2);
-				arrs.indices.push(i);
-				arrs.indices.push(i+2);
-				arrs.indices.push(i+3);
-			}
-			return arrs;
-		}
-		function setBuffers(vertices, normals, indices) {
-			var buffers = {};
-	
-			buffers.vertexBuffer = gl.createBuffer();
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-			gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-			buffers.vertexBuffer.itemSize = 3;
-			buffers.vertexBuffer.numItems = 24;
-
-			buffers.indexBuffer = gl.createBuffer();
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indexBuffer);
-			gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-
-			buffers.indexBuffer.itemSize = 1;
-			buffers.indexBuffer.numItems = 36;
-
-			buffers.normalBuffer = gl.createBuffer();
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normalBuffer);
-	
-			return buffers;
-		}
-		document.onkeydown = handleKeyDown;
-		document.onkeyup = handleKeyUp;
-	});
-}
-main();
-</script>
+<script src="main.js"></script>
 </body>
 </html>
