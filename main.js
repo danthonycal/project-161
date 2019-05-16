@@ -37,6 +37,11 @@ const fragmentShader = initShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
 var pointers = {};
 
+function changeLight(x, y) {
+	lightDirection[0] = x;
+	lightDirection[1] = y;
+}
+
 function handleKeyDown(event) {
 	pressedKeys[event.keyCode] = true;
 }

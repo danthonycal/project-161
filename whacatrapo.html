@@ -45,7 +45,8 @@
 <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
 <script type="text/javascript">
 	$(document).mousemove(function(e){
-		$('.hammer').css({left: e.pageX, top:e.pageY})
+		$('.hammer').css({left: e.pageX, top:e.pageY}),
+		changeLight(e.pageX, e.pageY)
 	})
 </script>
 <script src="./utils/webgl-init.js"></script>
