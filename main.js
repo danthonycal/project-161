@@ -7,8 +7,8 @@ var riseUp = 0;
 var riseMaxHeight = 30.7;
 var isRising = false;
 var armRising = false;
-var riseSpeed = 1.1;
-var angleSpeed = 15;
+var riseSpeed = 4.1;
+var angleSpeed = 35;
 
 var shift = 0; //shift coordinates of object models
 var matStack = [];
@@ -19,6 +19,11 @@ var requestId=0; //animation request ID
 var uView = mat4.create();
 var uProj = mat4.create();
 var lightDirection = [-6,-5,-6];
+
+var hasSpawned = false;
+var randSpawnX = Math.floor(Math.random()*3)-1;
+var randSpawnZ = Math.floor(Math.random()*3)-1;
+var spawnNumber = Math.floor(Math.random()*1);
 
 
 var canvas = document.getElementById("master");
@@ -131,7 +136,7 @@ var pipe = [
 	},
 	backInfo = {
 		id		: 2,
-		dims	: [600,150,-100],
+		dims	: [600,150,100],
 		transl	: [0,0.5,-0.75],
 		rot		: [0,0,0],
 		arrs	: null,
@@ -141,7 +146,7 @@ var pipe = [
 	},
 	leftInfo = {
 		id		: 3,
-		dims	: [100,-150,600],
+		dims	: [100,150,600],
 		transl	: [-0.75,0.5,0],
 		rot		: [0,0,0],
 		arrs	: null,
@@ -151,7 +156,7 @@ var pipe = [
 	},
 	rightInfo = {
 		id		: 4,
-		dims	: [-100,150,600],
+		dims	: [100,150,600],
 		transl	: [0.75,0.5,0],
 		rot		: [0,0,0],
 		arrs	: null,
@@ -333,7 +338,7 @@ function drawObject (shape, shadeProps, primitiveType=gl.TRIANGLES) {
 	gl.uniform3fv(pointers.uLightDiffusePointer, shadeProps.light.diffuse);
 	gl.uniform3fv(pointers.uLightSpecularPointer, shadeProps.light.specular);
 	gl.uniform3fv(pointers.uLightDirectionPointer, lightDirection);
-	gl.uniform3fv(pointers.uEyePositionPointer, camera);
+	gl.uniform3fv(pointers.uEyePositionPointer, [0.0,9.5,15]);
 
 	// set material properties
 	gl.uniform3fv(pointers.uMaterialAmbientPointer, shadeProps.material.ambient);
@@ -372,17 +377,9 @@ function animate() {
 	uProj = mat4.perspective(uProj, toRadian(30),canvas.width/canvas.height,1,100);
 
 
-	gl.clearColor(0, 0, 0, 1);
+	// gl.clearColor(0, 0, 0, 1);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
-	bgGround.uModel = mat4.create();
-	bgGround.uNormal = mat4.create();
-
-
-	mat4.invert(bgGround.uNormal,bgGround.uModel);
-	mat4.transpose(bgGround.uNormal,bgGround.uNormal);
-
-	drawObject(bgGround, shadingProperties);
 
 
 	var pipeSpacing = 3;
@@ -402,12 +399,16 @@ function animate() {
 			});
 		}
 	}
-	
+	if(hasSpawned) {
+		randSpawnX = Math.floor(Math.random()*3)-1;
+		randSpawnZ = Math.floor(Math.random()*3)-1;
+	} 
+	hasSpawned = false;
 	parts.forEach(function(part) {
 		part.uModel = mat4.create();
 		part.uNormal = mat4.create();
 
-		mat4.translate(part.uModel, part.uModel, [part.transl[0],part.transl[1]+(0.03*riseUp),part.transl[2]]);
+		mat4.translate(part.uModel, part.uModel, [part.transl[0]+randSpawnX*pipeSpacing,part.transl[1]+(0.03*riseUp),part.transl[2]+randSpawnZ*pipeSpacing]);
 			
 		if(riseUp>(2*riseMaxHeight/3) && part.id == 3){
 			mat4.translate(part.uModel, part.uModel, [0,.35,0,0]);
@@ -426,13 +427,15 @@ function animate() {
 		drawObject(part, shadingProperties);
 
 	});
+
 	
 
 	if(riseUp>riseMaxHeight) {
 		isRising = false;
 		armRising = false;
 	}
-	if(riseUp<0) {
+	if(riseUp<1) {
+		hasSpawned = true;
 		isRising = true;
 		armRising = true;
 	}
@@ -465,24 +468,21 @@ function main() {
 	gl.enableVertexAttribArray(pointers.aPositionPointer);
 	gl.enableVertexAttribArray(pointers.aNormalPointer);
 
-	bgGround.buffers = setBuffers(bgGround.arrs.vertices,bgGround.arrs.normals,bgGround.arrs.indices);	
+	// bgGround.buffers = setBuffers(bgGround.arrs.vertices,bgGround.arrs.normals,bgGround.arrs.indices);	
 
 	parts.forEach(function(part){
-		part.arrs = setGeom(part.dims[0],part.dims[1],part.dims[2]);
-		part.buffers = setBuffers(part.arrs.vertices,part.arrs.normals,part.arrs.indices);
-
-		// part.uModel = mat4.create();
-		// part.uNormal = mat4.create();
-	});
+		part.arrs = setGeom(part.dims[0], part.dims[1], part.dims[2]);
+		part.buffers = setBuffers(part.arrs.vertices, part.arrs.normals, part.arrs.indices);
+	})
+	
 	pipe.forEach(function(part){
 		part.arrs = setGeom(part.dims[0], part.dims[1], part.dims[2]);
 		part.buffers = setBuffers(part.arrs.vertices, part.arrs.normals, part.arrs.indices);
 	
-		// part.uModel	 = mat4.create();
-		// part.uNormal	 = mat4.create();
-
 	})
 
+	animate();
+	animate();
 	animate();
 	
 	document.onkeydown = handleKeyDown;
