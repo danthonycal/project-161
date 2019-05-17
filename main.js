@@ -7,8 +7,8 @@ var riseUp = 0;
 var riseMaxHeight = 30.7;
 var isRising = false;
 var armRising = false;
-var riseSpeed = 4.1;
-var angleSpeed = 35;
+var riseSpeed = 0.41;
+var angleSpeed = 5;
 
 var shift = 0; //shift coordinates of object models
 var matStack = [];
@@ -38,9 +38,11 @@ const fragmentShader = initShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 var pointers = {};
 
 function changeLight(x, y) {
-	lightDirection[0] = x;
-	lightDirection[1] = y;
+	lightDirection[0] = x-(canvas.width/2);
+	lightDirection[1] = -9.5;
+	lightDirection[2] = y-(canvas.height/2);
 }
+
 
 function handleKeyDown(event) {
 	pressedKeys[event.keyCode] = true;
@@ -382,7 +384,7 @@ function animate() {
 	uProj = mat4.perspective(uProj, toRadian(30),canvas.width/canvas.height,1,100);
 
 
-	// gl.clearColor(0, 0, 0, 1);
+	gl.clearColor(0.3, 0.3, 0.5, 1);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
 
